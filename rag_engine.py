@@ -8,15 +8,15 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
-class RAGEngine:
+class RAGEngine:  # ← Clase debe empezar aquí
     """Motor de RAG con Llama local"""
     
-    def __init__(self, vectorstore):
+    def __init__(self, vectorstore):  # ← 4 espacios de indentación
         self.vectorstore = vectorstore
         self.llm = self._setup_llm()
         self.qa_chain = self._setup_chain()
         
-    def _setup_llm(self):
+    def _setup_llm(self):  # ← 4 espacios de indentación
         """Configurar Llama"""
         logger.info(f"Configurando LLM: {Config.MODEL_NAME}")
         
@@ -25,37 +25,41 @@ class RAGEngine:
             temperature=Config.TEMPERATURE,
         )
     
-    def _setup_chain(self):
-        """Crear cadena RAG con soporte bilingüe automático"""
+    def _setup_chain(self):  # ← 4 espacios de indentación (CRÍTICO)
+        """Crear cadena RAG con control estricto de idioma"""
         
-        # Template bilingüe - detecta idioma automáticamente
-        template = """You are an expert assistant from BrainTrainr that helps answer questions based on official documentation.
+        # Template con máxima fuerza para control de idioma
+        template = """LANGUAGE INSTRUCTION (MOST IMPORTANT - READ FIRST):
+- If question is in ENGLISH -> You MUST answer in ENGLISH only
+- If question is in SPANISH -> You MUST answer in SPANISH only
+- NEVER translate the question language
+- NEVER mix languages in your answer
 
-Important rules:
-- Use ONLY the information from the provided context
-- If you don't have the information, say: "I don't have that information in my database" (or in Spanish: "No tengo esa información en mi base de datos")
-- Be concise and direct
-- **CRITICAL: Respond in the SAME LANGUAGE as the user's question**
-  - If the question is in English → Answer in English
-  - If the question is in Spanish → Answer in Spanish
-- When mentioning specific information (dates, requirements, contacts), cite the source
+You are an expert assistant from BrainTrainr. Answer questions based only on the provided context.
 
-Context:
+RULES:
+1. Use ONLY information from the context below
+2. If you don't have the information, say: "I don't have that information in my database" (English) or "No tengo esa información en mi base de datos" (Spanish)
+3. Be concise and direct
+4. When mentioning specific details (dates, requirements, contacts), cite the source
+
+CONTEXT (documents in English):
 {context}
 
-Question: {question}
+QUESTION (answer in the SAME language as this question):
+{question}
 
-Helpful answer (in the same language as the question):"""
+ANSWER (in the exact same language as the question above):"""
         
-        PROMPT = PromptTemplate(
+        PROMPT = PromptTemplate(  # ← 8 espacios de indentación
             template=template,
             input_variables=["context", "question"]
         )
         
-        return RetrievalQA.from_chain_type(
-            llm=self.llm,
+        return RetrievalQA.from_chain_type(  # ← 8 espacios de indentación
+            llm=self.llm,  # ← AQUÍ está el "self" - debe tener 12 espacios
             chain_type="stuff",
-            retriever=self.vectorstore.as_retriever(
+            retriever=self.vectorstore.as_retriever(  # ← AQUÍ también
                 search_type="similarity",
                 search_kwargs={"k": Config.TOP_K}
             ),
@@ -63,17 +67,8 @@ Helpful answer (in the same language as the question):"""
             chain_type_kwargs={"prompt": PROMPT}
         )
     
-    def query(self, question: str, include_sources=False):
-        """
-        Procesar una pregunta
-        
-        Args:
-            question: La pregunta del usuario (en cualquier idioma)
-            include_sources: Si se incluyen los chunks fuente
-            
-        Returns:
-            dict con answer, sources (opcional), y metadata
-        """
+    def query(self, question: str, include_sources=False):  # ← 4 espacios
+        """Procesar una pregunta"""
         logger.info(f"Query: {question}")
         
         start_time = time.time()
@@ -110,7 +105,7 @@ Helpful answer (in the same language as the question):"""
             raise
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # ← Sin indentación (nivel raíz)
     logging.basicConfig(level=logging.INFO)
     
     from pdf_processor import PDFProcessor
@@ -120,12 +115,11 @@ if __name__ == "__main__":
     
     engine = RAGEngine(vectorstore)
     
-    # Test bilingüe - mezcla inglés y español
     test_questions = [
-        "What are the requirements to immigrate to Canada?",  # Inglés
-        "¿Qué es Express Entry?",  # Español
-        "How long does the permanent residence process take?",  # Inglés
-        "¿Cuáles son los tipos de visa disponibles?",  # Español
+        "What are the requirements to immigrate to Canada?",
+        "¿Qué es Express Entry?",
+        "How long does the permanent residence process take?",
+        "¿Cuáles son los tipos de visa disponibles?",
     ]
     
     print("\n" + "="*60)
