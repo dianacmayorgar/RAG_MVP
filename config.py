@@ -5,7 +5,7 @@ load_dotenv()
 
 class Config:
     # Paths
-    PDF_PATH = os.getenv('PDF_PATH', 'C:/Users/diana/OneDrive/Escritorio/Ontario.pdf')
+    PDF_PATH = os.getenv('PDF_PATH', 'data/')
     CHROMA_DIR = os.getenv('CHROMA_DIR', './chroma_db')
     
     # Model settings
