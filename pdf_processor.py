@@ -11,7 +11,7 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 class PDFProcessor:
-    """Procesa PDFs y crea vector store - soporta archivo individual o carpeta completa"""
+    """Processes PDFs and creates vector store - supports individual file or entire folder"""
     
     def __init__(self, pdf_path=None):
         self.pdf_path = pdf_path or Config.PDF_PATH
@@ -19,33 +19,33 @@ class PDFProcessor:
         self.vectorstore = None
         
     def _load_embeddings(self):
-        """Cargar modelo de embeddings"""
-        logger.info("Cargando modelo de embeddings...")
+        """Load embeddings model"""
+        logger.info("Loading embeddings model...")
         return HuggingFaceEmbeddings(
             model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
             model_kwargs={'device': 'cpu'}
         )
     
     def _get_pdf_files(self):
-        """Obtener lista de PDFs a procesar"""
-        # Si es una carpeta, obtener todos los PDFs
+        """Get list of PDFs to process"""
+        # If it's a folder, get all PDFs
         if os.path.isdir(self.pdf_path):
             pdf_files = glob.glob(os.path.join(self.pdf_path, "*.pdf"))
             if not pdf_files:
-                raise FileNotFoundError(f"No se encontraron PDFs en {self.pdf_path}")
-            logger.info(f"📁 Carpeta detectada: {len(pdf_files)} PDFs encontrados")
+                raise FileNotFoundError(f"No PDFs found in {self.pdf_path}")
+            logger.info(f"📁 Folder detected: {len(pdf_files)} PDFs found")
             return sorted(pdf_files)
         
-        # Si es un archivo individual
+        # If it's an individual file
         elif os.path.isfile(self.pdf_path):
-            logger.info(f"📄 Archivo individual: {self.pdf_path}")
+            logger.info(f"📄 Individual file: {self.pdf_path}")
             return [self.pdf_path]
         
         else:
-            raise FileNotFoundError(f"No existe: {self.pdf_path}")
+            raise FileNotFoundError(f"Does not exist: {self.pdf_path}")
     
     def load_and_split(self):
-        """Cargar PDF(s) y dividir en chunks"""
+        """Load PDF(s) and split into chunks"""
         pdf_files = self._get_pdf_files()
         
         all_chunks = []
@@ -61,48 +61,48 @@ class PDFProcessor:
         
         for pdf_file in pdf_files:
             try:
-                logger.info(f"📖 Procesando: {os.path.basename(pdf_file)}")
+                logger.info(f"📖 Processing: {os.path.basename(pdf_file)}")
                 
                 loader = PyPDFLoader(pdf_file)
                 documents = loader.load()
                 
-                # Agregar metadata del archivo fuente
+                # Add source file metadata
                 for doc in documents:
                     doc.metadata['source_file'] = os.path.basename(pdf_file)
                     doc.metadata['source_path'] = pdf_file
                 
-                logger.info(f"   ✓ {len(documents)} páginas cargadas")
+                logger.info(f"   ✓ {len(documents)} pages loaded")
                 
                 chunks = text_splitter.split_documents(documents)
                 all_chunks.extend(chunks)
                 
-                logger.info(f"   ✓ {len(chunks)} chunks creados")
+                logger.info(f"   ✓ {len(chunks)} chunks created")
                 successful_files += 1
                 
             except Exception as e:
-                logger.error(f"   ✗ Error procesando {os.path.basename(pdf_file)}: {e}")
+                logger.error(f"   ✗ Error processing {os.path.basename(pdf_file)}: {e}")
                 failed_files += 1
                 continue
         
-        # Resumen
+        # Summary
         logger.info(f"\n{'='*60}")
-        logger.info(f"📊 RESUMEN:")
-        logger.info(f"   ✓ Archivos exitosos: {successful_files}")
-        logger.info(f"   ✗ Archivos fallidos: {failed_files}")
+        logger.info(f"📊 SUMMARY:")
+        logger.info(f"   ✓ Successful files: {successful_files}")
+        logger.info(f"   ✗ Failed files: {failed_files}")
         logger.info(f"   📝 Total chunks: {len(all_chunks)}")
         logger.info(f"{'='*60}\n")
         
         if len(all_chunks) == 0:
-            raise ValueError("No se pudo procesar ningún PDF")
+            raise ValueError("Could not process any PDF")
         
         return all_chunks
     
     def create_vectorstore(self, chunks, persist_dir=None):
-        """Crear y persistir vector store"""
+        """Create and persist vector store"""
         persist_dir = persist_dir or Config.CHROMA_DIR
         
-        logger.info(f"💾 Creando vector store con {len(chunks)} chunks...")
-        logger.info("   (esto puede tardar unos minutos)")
+        logger.info(f"💾 Creating vector store with {len(chunks)} chunks...")
+        logger.info("   (this may take a few minutes)")
         
         self.vectorstore = Chroma.from_documents(
             documents=chunks,
@@ -110,17 +110,17 @@ class PDFProcessor:
             persist_directory=persist_dir
         )
         
-        logger.info(f"✅ Vector store guardado en {persist_dir}")
+        logger.info(f"✅ Vector store saved in {persist_dir}")
         return self.vectorstore
     
     def load_vectorstore(self, persist_dir=None):
-        """Cargar vector store existente"""
+        """Load existing vector store"""
         persist_dir = persist_dir or Config.CHROMA_DIR
         
         if not os.path.exists(persist_dir):
             return None
             
-        logger.info(f"📂 Cargando vector store existente de {persist_dir}...")
+        logger.info(f"📂 Loading existing vector store from {persist_dir}...")
         self.vectorstore = Chroma(
             persist_directory=persist_dir,
             embedding_function=self.embeddings
@@ -129,26 +129,26 @@ class PDFProcessor:
         return self.vectorstore
     
     def process(self, force_recreate=False):
-        """Pipeline completo: cargar o crear vector store"""
+        """Complete pipeline: load or create vector store"""
         persist_dir = Config.CHROMA_DIR
         
         if not force_recreate:
             vectorstore = self.load_vectorstore(persist_dir)
             if vectorstore:
-                logger.info("✅ Vector store cargado exitosamente")
+                logger.info("✅ Vector store loaded successfully")
                 stats = self.get_stats()
-                logger.info(f"   📊 {stats['total_chunks']} chunks en base de datos")
+                logger.info(f"   📊 {stats['total_chunks']} chunks in database")
                 return vectorstore
         
-        logger.info("🔄 Creando nuevo vector store...")
+        logger.info("🔄 Creating new vector store...")
         chunks = self.load_and_split()
         vectorstore = self.create_vectorstore(chunks, persist_dir)
-        logger.info("✅ Vector store creado exitosamente")
+        logger.info("✅ Vector store created successfully")
         
         return vectorstore
     
     def get_stats(self):
-        """Obtener estadísticas del vector store"""
+        """Get vector store statistics"""
         if not self.vectorstore:
             return None
             
@@ -170,19 +170,19 @@ if __name__ == "__main__":
     processor = PDFProcessor()
     vectorstore = processor.process()
     
-    results = vectorstore.similarity_search("procesos para inmigrar a Canadá", k=3)
+    results = vectorstore.similarity_search("immigration processes to Canada", k=3)
     
     print("\n" + "="*60)
-    print("🔍 TEST DE BÚSQUEDA")
+    print("🔍 SEARCH TEST")
     print("="*60)
     for i, doc in enumerate(results, 1):
-        print(f"\n--- Resultado {i} ---")
-        print(f"Archivo: {doc.metadata.get('source_file', 'N/A')}")
-        print(f"Página: {doc.metadata.get('page', 'N/A')}")
-        print(f"Contenido: {doc.page_content[:200]}...")
+        print(f"\n--- Result {i} ---")
+        print(f"File: {doc.metadata.get('source_file', 'N/A')}")
+        print(f"Page: {doc.metadata.get('page', 'N/A')}")
+        print(f"Content: {doc.page_content[:200]}...")
     
     print("\n" + "="*60)
-    print("📊 ESTADÍSTICAS")
+    print("📊 STATISTICS")
     print("="*60)
     stats = processor.get_stats()
     for key, value in stats.items():

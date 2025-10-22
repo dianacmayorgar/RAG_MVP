@@ -20,10 +20,10 @@ rag_engine = None
 processor = None
 
 def initialize_system():
-    """Inicializar el sistema RAG"""
+    """Initialize RAG system"""
     global vectorstore, rag_engine, processor
     
-    logger.info("🚀 Inicializando BrainTrainr RAG API...")
+    logger.info("🚀 Initializing BrainTrainr RAG API...")
     
     try:
         processor = PDFProcessor()
@@ -31,26 +31,26 @@ def initialize_system():
         
         rag_engine = RAGEngine(vectorstore)
         
-        logger.info("✅ Sistema inicializado correctamente")
+        logger.info("✅ System initialized successfully")
         return True
         
     except Exception as e:
-        logger.error(f"❌ Error en inicialización: {str(e)}")
+        logger.error(f"❌ Initialization error: {str(e)}")
         return False
 
 initialize_system()
 
 @app.route('/', methods=['GET'])
 def home():
-    """Endpoint raíz"""
+    """Root endpoint"""
     return jsonify({
         "name": "BrainTrainr RAG API",
         "version": "0.1.0",
         "status": "online" if rag_engine else "initializing",
         "endpoints": {
-            "POST /chat": "Hacer una pregunta",
+            "POST /chat": "Ask a question",
             "GET /health": "Health check",
-            "GET /stats": "Estadísticas del sistema"
+            "GET /stats": "System statistics"
         }
     })
 
@@ -66,9 +66,9 @@ def health():
 
 @app.route('/stats', methods=['GET'])
 def stats():
-    """Estadísticas del sistema"""
+    """System statistics"""
     if not processor:
-        return jsonify({"error": "Sistema no inicializado"}), 503
+        return jsonify({"error": "System not initialized"}), 503
     
     stats_data = processor.get_stats()
     stats_data.update({
@@ -81,19 +81,19 @@ def stats():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Endpoint principal de chat"""
+    """Main chat endpoint"""
     if not rag_engine:
-        return jsonify({"error": "Sistema RAG no inicializado"}), 503
+        return jsonify({"error": "RAG system not initialized"}), 503
     
     data = request.get_json()
     
     if not data or 'question' not in data:
-        return jsonify({"error": "Campo 'question' requerido"}), 400
+        return jsonify({"error": "'question' field required"}), 400
     
     question = data['question'].strip()
     
     if not question:
-        return jsonify({"error": "La pregunta no puede estar vacía"}), 400
+        return jsonify({"error": "Question cannot be empty"}), 400
     
     include_sources = data.get('include_sources', False)
     
@@ -106,7 +106,7 @@ def chat():
         })
         
     except Exception as e:
-        logger.error(f"Error en /chat: {str(e)}")
+        logger.error(f"Error in /chat: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -114,11 +114,11 @@ def chat():
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({"error": "Endpoint no encontrado", "status": 404}), 404
+    return jsonify({"error": "Endpoint not found", "status": 404}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    return jsonify({"error": "Error interno del servidor", "status": 500}), 500
+    return jsonify({"error": "Internal server error", "status": 500}), 500
 
 if __name__ == '__main__':
     app.run(

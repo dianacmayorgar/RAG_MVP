@@ -30,10 +30,7 @@ class RAGEngine:  # ← Clase debe empezar aquí
         
         # Template con máxima fuerza para control de idioma
         template = """LANGUAGE INSTRUCTION (MOST IMPORTANT - READ FIRST):
-- If question is in ENGLISH -> You MUST answer in ENGLISH only
-- If question is in SPANISH -> You MUST answer in SPANISH only
-- NEVER translate the question language
-- NEVER mix languages in your answer
+- You MUST answer in ENGLISH only
 
 You are an expert assistant from BrainTrainr. Answer questions based only on the provided context.
 
